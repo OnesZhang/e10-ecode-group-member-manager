@@ -1,0 +1,4 @@
+# e-code build & sync artifacts (local only)
+.ecode-runtime/
+.target/
+.DS_Store

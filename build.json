@@ -1,0 +1,15 @@
+{
+  "appId": "",
+  "appUUID": "",
+  "id": "",
+  "name": "group-member-manager",
+  "lockFlag": "n",
+  "officialFlag": "n",
+  "systemFlag": "n",
+  "debugFlag": "n",
+  "codes": {
+    "entry.js": {
+      "state": "y"
+    }
+  }
+}
