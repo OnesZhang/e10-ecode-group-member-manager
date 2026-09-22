@@ -29,7 +29,7 @@ const PageComponent = React.lazy(() => {
  */
 const PageRoute = (
   <Route path={`${publicUrl}/sp/custom/group-member-manager/members`}>
-    <React.Suspense fallback={<div>页面加载中...</div>}>
+    <React.Suspense fallback={<div>Loading...</div>}>
       <PageComponent />
     </React.Suspense>
   </Route>

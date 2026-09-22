@@ -118,13 +118,50 @@ export async function removeGroupMembers(groupId, empIds) {
   return postJSON('/api/bs/hrm/group/deleteUserLink', { id: groupId, empIds });
 }
 
+// 外部联系人虚拟组织 ID（租户级，懒获取 + 缓存）
+let externalVirtualOrgId = null;
+
 /**
- * 5. 人员快捷搜索（按姓名/拼音/账号/邮箱/手机号等匹配）
- * @param {string} keyword 搜索关键字
- * @returns {Promise<Array>} 人员数组（originTargetType === 'user' 的条目）
+ * 获取「外部联系人」虚拟组织 ID（cmd=external 时 leftData 返回的 defaultVirtualOrg）
  */
-export async function searchPersons(keyword) {
-  const data = await postJSON('/api/hrm/common/browser/data/resource', {
+export async function ensureExternalVirtualOrgId() {
+  if (externalVirtualOrgId) return externalVirtualOrgId;
+  const data = await postJSON('/api/hrm/common/browser/leftData/resource', {
+    browserMultiple: true,
+    authWecahtBook: false,
+    wxDepNeedConvertCount: 0,
+    wxEmpNeedConvertCount: 0,
+    wxTotalNeedConvertCount: 0,
+    hideManager: '1',
+    cmd: 'external',
+    callData: true,
+    pageSize: 30,
+    current: 1
+  });
+  const id =
+    (data &&
+      (data.defaultVirtualOrg ||
+        (data.leftVirtualOrg && data.leftVirtualOrg[0] && data.leftVirtualOrg[0].id))) ||
+    null;
+  externalVirtualOrgId = id;
+  return id;
+}
+
+/**
+ * 5. 人员快捷搜索
+ * - internal（默认）：官方「选择人员」同接口 /api/hrm/common/browser/data/resource，
+ *   cmd='all'，返回过滤 originTargetType === 'user'
+ * - external：改走「外部组织维护」清单接口 /api/hrm/user/external/userExternalPage，
+ *   能直接返回外部联系人的企业(subcompany) / 部门(department) / Job Title(position) / 联系方式
+ * @param {string} keyword 搜索关键字
+ * @param {{external?: boolean}} [opts]
+ * @returns {Promise<Array>} 人员数组
+ */
+export async function searchPersons(keyword, opts = {}) {
+  if (opts.external) {
+    return searchExternalPersons(keyword);
+  }
+  const body = {
     browserMultiple: true,
     authWecahtBook: false,
     wxDepNeedConvertCount: 0,
@@ -153,7 +190,37 @@ export async function searchPersons(keyword) {
     type: 'and',
     containsNoneAccount: false,
     containsPartTimeEmployee: false
-  });
+  };
+  const data = await postJSON('/api/hrm/common/browser/data/resource', body);
   const items = (data && data.data) || [];
   return items.filter((it) => it.originTargetType === 'user');
+}
+
+/**
+ * 外部联系人关键字搜索（「外部组织维护」清单接口）
+ * 返回项已归一化为：{ id, name, subcompany(企业), department(部门), position, contact_way, mobile, email, external }
+ * 其中 id 与加群接口同源，可直接作为 empIds 使用。
+ */
+export async function searchExternalPersons(keyword) {
+  const virtualId = await ensureExternalVirtualOrgId();
+  const data = await postJSON('/api/hrm/user/external/userExternalPage', {
+    menuCode: 'externalOrgSetting',
+    keyword: keyword || '',
+    advCondition: {},
+    virtualId,
+    includeSub: true,
+    containDisableDept: false
+  });
+  const items = (data && data.data) || [];
+  return items.map((it) => ({
+    id: it.id,
+    name: it.username || it.name || '-',
+    subcompany: it.subcompany || '',
+    department: it.department || '',
+    position: it.position || '',
+    contact_way: it.contact_way || '',
+    mobile: it.mobile || '',
+    email: it.email || '',
+    external: '1'
+  }));
 }

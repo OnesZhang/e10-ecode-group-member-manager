@@ -195,6 +195,7 @@ class GroupMemberManager extends React.Component {
       addModal: {
         groupId: group.id,
         groupName: group.name,
+        source: 'internal', // internal | external
         keyword: '',
         searching: false,
         results: [],
@@ -206,6 +207,22 @@ class GroupMemberManager extends React.Component {
 
   closeAddModal = () => {
     this.setState({ addModal: null });
+  };
+
+  switchAddSource = (source) => {
+    const { addModal } = this.state;
+    if (!addModal || addModal.source === source) return;
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.setState((s) => ({
+      addModal: {
+        ...s.addModal,
+        source,
+        keyword: '',
+        searching: false,
+        results: [],
+        selected: new Set()
+      }
+    }));
   };
 
   handleAddKeyword = (e) => {
@@ -227,7 +244,9 @@ class GroupMemberManager extends React.Component {
       addModal: { ...s.addModal, searching: true }
     }));
     try {
-      const results = await searchPersons(keyword);
+      const results = await searchPersons(keyword, {
+        external: addModal.source === 'external'
+      });
       this.setState((s) => ({
         addModal: { ...s.addModal, searching: false, results }
       }));
@@ -585,7 +604,8 @@ class GroupMemberManager extends React.Component {
   renderAddModal() {
     const { addModal } = this.state;
     if (!addModal) return null;
-    const { groupName, keyword, searching, results, selected, submitting } = addModal;
+    const { groupName, keyword, searching, results, selected, submitting, source } = addModal;
+    const isExternal = source === 'external';
     return (
       <div
         className={`${prefixCls}-modal-mask`}
@@ -607,6 +627,23 @@ class GroupMemberManager extends React.Component {
             </button>
           </div>
 
+          <div className={`${prefixCls}-add-tabs`}>
+            <button
+              type="button"
+              className={`${prefixCls}-add-tab ${!isExternal ? 'active' : ''}`}
+              onClick={() => this.switchAddSource('internal')}
+            >
+              Internal
+            </button>
+            <button
+              type="button"
+              className={`${prefixCls}-add-tab ${isExternal ? 'active' : ''}`}
+              onClick={() => this.switchAddSource('external')}
+            >
+              External
+            </button>
+          </div>
+
           <div className={`${prefixCls}-add-search`}>
             <div className={`${prefixCls}-search-box large`}>
               <svg viewBox="0 0 16 16" width="15" height="15" fill="#999">
@@ -614,7 +651,11 @@ class GroupMemberManager extends React.Component {
               </svg>
               <input
                 type="text"
-                placeholder="Name / pinyin / account / email / mobile, Enter or Search"
+                placeholder={
+                  isExternal
+                    ? 'Name / email / mobile, Enter or Search'
+                    : 'Name / pinyin / account / email / mobile, Enter or Search'
+                }
                 value={keyword}
                 autoFocus
                 onChange={this.handleAddKeyword}
@@ -646,6 +687,14 @@ class GroupMemberManager extends React.Component {
             ) : (
               results.map((r, idx) => {
                 const checked = selected.has(r.id);
+                const meta = isExternal
+                  ? ([r.subcompany, r.department].filter(Boolean).join(' · ') ||
+                      r.position ||
+                      r.contact_way ||
+                      r.mobile ||
+                      r.email ||
+                      'External Contact')
+                  : `${r.department || '-'} · ${r.position || '-'}`;
                 return (
                   <div
                     className={`${prefixCls}-person-item ${checked ? 'checked' : ''}`}
@@ -666,9 +715,7 @@ class GroupMemberManager extends React.Component {
                     </span>
                     <div className={`${prefixCls}-person-info`}>
                       <div className={`${prefixCls}-person-name`}>{r.name}</div>
-                      <div className={`${prefixCls}-person-meta`}>
-                        {r.department || '-'} · {r.position || '-'}
-                      </div>
+                      <div className={`${prefixCls}-person-meta`}>{meta}</div>
                     </div>
                     <span className={`${prefixCls}-person-check`}>{checked ? '✓' : ''}</span>
                   </div>
