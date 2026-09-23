@@ -40,21 +40,37 @@ function parseGroupIds(params) {
 }
 
 /**
+ * Normalize addSource param for the Add Members modal:
+ * 'internal' | 'external' | 'both' (default 'both').
+ * 'both' shows both Internal/External tabs; a specific value locks the modal
+ * to that single source (tabs hidden, source fixed).
+ */
+function normalizeAddSourceMode(raw) {
+  const v = String(raw || '').trim().toLowerCase();
+  return v === 'internal' || v === 'external' ? v : 'both';
+}
+
+/**
  * Group member management page (public groups only).
  *
  * Entry: e-builder button "Open Page - Implicit Params" carries groupIds
  * (comma-separated group IDs). The page shows only those public groups and
  * lets module admins expand a group to view members and quickly add / remove.
+ *
+ * Optional param: addSource = internal | external | both (default both).
+ * Controls which source tabs the "Add Members" modal shows.
  */
 class GroupMemberManager extends React.Component {
   constructor(props) {
     super(props);
     const params = collectParams();
     const groupIds = parseGroupIds(params);
+    const addSourceMode = normalizeAddSourceMode(params.addSource);
     this.state = {
       initState: 'loading', // loading | noParam | ready | emptyGroups
       params,
       groupIds,
+      addSourceMode,
       groups: [],
       groupSearch: '',
       expandedIds: new Set(),
@@ -191,11 +207,13 @@ class GroupMemberManager extends React.Component {
   // ---------- add members ----------
 
   openAddModal = (group) => {
+    const { addSourceMode } = this.state;
     this.setState({
       addModal: {
         groupId: group.id,
         groupName: group.name,
-        source: 'internal', // internal | external
+        // 'both' → start on internal (tabs shown); locked mode → fixed source
+        source: addSourceMode === 'both' ? 'internal' : addSourceMode, // internal | external
         keyword: '',
         searching: false,
         results: [],
@@ -508,26 +526,15 @@ class GroupMemberManager extends React.Component {
     return (
       <div className={`${prefixCls}-member-panel`}>
         <div className={`${prefixCls}-member-toolbar`}>
-          <div className={`${prefixCls}-member-title`}>
-            Members
-            <span className={`${prefixCls}-count-badge`}>{members.length}</span>
-            {filtered.length !== members.length && (
-              <span className={`${prefixCls}-count-badge muted`}>
-                {filtered.length} matched
-              </span>
-            )}
-          </div>
-          <div className={`${prefixCls}-member-tools`}>
-            <div className={`${prefixCls}-search-box`}>
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="#999">
-                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-              </svg>
-              <input
-                type="text"
-                placeholder="Search name / department / position"
-                value={kw}
-                onChange={(e) => this.handleMemberSearch(group.id, e)}
-              />
+          <div className={`${prefixCls}-member-left`}>
+            <div className={`${prefixCls}-member-title`}>
+              Members
+              <span className={`${prefixCls}-count-badge`}>{members.length}</span>
+              {filtered.length !== members.length && (
+                <span className={`${prefixCls}-count-badge muted`}>
+                  {filtered.length} matched
+                </span>
+              )}
             </div>
             <button
               className={`${prefixCls}-btn ${prefixCls}-btn-primary`}
@@ -535,6 +542,19 @@ class GroupMemberManager extends React.Component {
             >
               ＋ Add Member
             </button>
+          </div>
+          <div className={`${prefixCls}-member-tools`}>
+            <div className={`${prefixCls}-search-box member`}>
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="#999">
+                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+              </svg>
+              <input
+                type="text"
+                placeholder="Filter members in this group"
+                value={kw}
+                onChange={(e) => this.handleMemberSearch(group.id, e)}
+              />
+            </div>
             <button
               className={`${prefixCls}-btn ${prefixCls}-btn-default`}
               onClick={() => this.refreshMembers(group.id)}
@@ -602,10 +622,11 @@ class GroupMemberManager extends React.Component {
   }
 
   renderAddModal() {
-    const { addModal } = this.state;
+    const { addModal, addSourceMode } = this.state;
     if (!addModal) return null;
     const { groupName, keyword, searching, results, selected, submitting, source } = addModal;
     const isExternal = source === 'external';
+    const showTabs = addSourceMode === 'both';
     return (
       <div
         className={`${prefixCls}-modal-mask`}
@@ -617,7 +638,14 @@ class GroupMemberManager extends React.Component {
         >
           <div className={`${prefixCls}-modal-header`}>
             <span className={`${prefixCls}-modal-title`}>Add Members</span>
-            <span className={`${prefixCls}-modal-sub`}>Group: {groupName}</span>
+            <span className={`${prefixCls}-modal-sub`}>
+              Group: {groupName}
+              {!showTabs && (
+                <span className={`${prefixCls}-source-badge`}>
+                  {isExternal ? 'External' : 'Internal'}
+                </span>
+              )}
+            </span>
             <button
               className={`${prefixCls}-modal-close`}
               onClick={this.closeAddModal}
@@ -627,22 +655,24 @@ class GroupMemberManager extends React.Component {
             </button>
           </div>
 
-          <div className={`${prefixCls}-add-tabs`}>
-            <button
-              type="button"
-              className={`${prefixCls}-add-tab ${!isExternal ? 'active' : ''}`}
-              onClick={() => this.switchAddSource('internal')}
-            >
-              Internal
-            </button>
-            <button
-              type="button"
-              className={`${prefixCls}-add-tab ${isExternal ? 'active' : ''}`}
-              onClick={() => this.switchAddSource('external')}
-            >
-              External
-            </button>
-          </div>
+          {showTabs && (
+            <div className={`${prefixCls}-add-tabs`}>
+              <button
+                type="button"
+                className={`${prefixCls}-add-tab ${!isExternal ? 'active' : ''}`}
+                onClick={() => this.switchAddSource('internal')}
+              >
+                Internal
+              </button>
+              <button
+                type="button"
+                className={`${prefixCls}-add-tab ${isExternal ? 'active' : ''}`}
+                onClick={() => this.switchAddSource('external')}
+              >
+                External
+              </button>
+            </div>
+          )}
 
           <div className={`${prefixCls}-add-search`}>
             <div className={`${prefixCls}-search-box large`}>

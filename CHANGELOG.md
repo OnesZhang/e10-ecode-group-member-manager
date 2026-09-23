@@ -2,6 +2,11 @@
 
 本项目遵循语义化版本（Semantic Versioning）。
 
+## v1.2.0
+
+- 新增 URL 参数 `addSource` 控制「Add Members」弹窗来源：`both`（默认，显示 Internal/External 两个标签）、`internal`、`external`；锁定单一来源时隐藏标签栏，并在弹窗标题旁显示来源徽标。
+- 成员面板工具栏重排，消除歧义：「＋ Add Member」移到「Members」标题旁，成员搜索框独立于右侧并改为 `Filter members in this group`，明确其作用为过滤当前列表。
+
 ## v1.1.0
 
 - 新增「Internal / External」成员搜索切换：外部联系人搜索改走平台外部组织清单接口，能直接返回**所属企业、部门、Job Title、联系方式**。
