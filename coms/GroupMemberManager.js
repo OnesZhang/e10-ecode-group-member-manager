@@ -389,7 +389,7 @@ class GroupMemberManager extends React.Component {
             </svg>
             <input
               type="text"
-              placeholder="Search group name / creator"
+              placeholder="Search group name"
               value={groupSearch}
               onChange={this.handleGroupSearch}
             />
@@ -462,9 +462,6 @@ class GroupMemberManager extends React.Component {
               <div className={`${prefixCls}-col-name`}>Group Name</div>
               <div className={`${prefixCls}-col-type`}>Type</div>
               <div className={`${prefixCls}-col-count`}>Members</div>
-              <div className={`${prefixCls}-col-creator`}>Creator</div>
-              <div className={`${prefixCls}-col-time`}>Created Time</div>
-              <div className={`${prefixCls}-col-ops`}>Operations</div>
             </div>
             {list.map((g) => {
               const isOpen = expandedIds.has(g.id);
@@ -487,18 +484,6 @@ class GroupMemberManager extends React.Component {
                     <div className={`${prefixCls}-col-type`}>Public Group</div>
                     <div className={`${prefixCls}-col-count`}>
                       <span className={`${prefixCls}-member-count`}>{g.userCount}</span>
-                    </div>
-                    <div className={`${prefixCls}-col-creator`}>
-                      {(g.creator && g.creator.username) || '-'}
-                    </div>
-                    <div className={`${prefixCls}-col-time`}>{g.createTime || '-'}</div>
-                    <div className={`${prefixCls}-col-ops`} onClick={(e) => e.stopPropagation()}>
-                      <span
-                        className={`${prefixCls}-expand-link ${isOpen ? 'is-open' : ''}`}
-                        onClick={() => this.toggleExpand(g.id)}
-                      >
-                        {isOpen ? 'Hide Members' : 'Members'}
-                      </span>
                     </div>
                   </div>
                   <div className={`${prefixCls}-group-detail ${isOpen ? 'open' : ''}`}>

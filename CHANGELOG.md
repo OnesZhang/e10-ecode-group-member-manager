@@ -2,6 +2,10 @@
 
 本项目遵循语义化版本（Semantic Versioning）。
 
+## v1.3.0
+
+- 群组列表精简：隐藏「Creator / Created Time / Operations」三列，展开改为纯行点击（箭头指示），操作更简洁。
+
 ## v1.2.0
 
 - 新增 URL 参数 `addSource` 控制「Add Members」弹窗来源：`both`（默认，显示 Internal/External 两个标签）、`internal`、`external`；锁定单一来源时隐藏标签栏，并在弹窗标题旁显示来源徽标。
