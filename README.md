@@ -101,7 +101,13 @@ E10 HTTP 接口（公共群组 / 成员 / 添加 / 移出 / 人员搜索）
 | 群组成员列表 | `/api/bs/hrm/group/queryUser` |
 | 添加成员 | `/api/bs/hrm/group/addUserLink` |
 | 移出成员 | `/api/bs/hrm/group/deleteUserLink` |
-| 人员快捷搜索 | `/api/hrm/common/browser/data/resource` |
+| 内部人员快捷搜索 | `/api/hrm/common/browser/data/resource` |
+| 外部联系人维度 ID | `/api/hrm/common/browser/leftData/resource`（`cmd=external`，取 `data.data[0].id`） |
+| 外部联系人快捷搜索 | `/api/hrm/user/external/userExternalPage` |
+
+> **外部联系人搜索注意**：`userExternalPage` 必须带「外部联系人」维度 ID（`virtualId` 与 `targetId` 同值），
+> 否则平台返回 `{"code":500,"msg":"外部联系人维度 必填,不可以为空"}`。维度 ID 由 `leftData/resource`
+> 动态解析，无需硬编码；返回项的 `id` 与群组成员 `employeeId` 同一 ID 域，可直接作为加群接口的 `empIds`。
 
 ---
 
@@ -117,7 +123,7 @@ E10 HTTP 接口（公共群组 / 成员 / 添加 / 移出 / 人员搜索）
 ├── styles/
 │   └── group-member-manager.css
 ├── utils/
-│   ├── api.js                  # 上述五个平台接口的封装
+│   ├── api.js                  # 上述七个平台接口的封装
 │   └── implicitParams.js       # 读取 e-builder 隐式传参
 ├── config/                     # e-code 生成的空配置占位
 └── docs/                       # 界面截图

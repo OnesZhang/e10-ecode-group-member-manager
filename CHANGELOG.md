@@ -2,6 +2,11 @@
 
 本项目遵循语义化版本（Semantic Versioning）。
 
+## v1.3.1
+
+- 修复「添加外部人员」时搜索报错：外部联系人搜索接口 `userExternalPage` 未带「外部联系人」维度 ID，平台返回 `{"code":500,"msg":"外部联系人维度 必填,不可以为空"}`。现由 `leftData/resource`（`cmd=external`）动态解析维度 ID，并补齐 `targetId`，不再硬编码租户值。
+- README 补充外部联系人搜索相关接口与维度 ID 说明。
+
 ## v1.3.0
 
 - 群组列表精简：隐藏「Creator / Created Time / Operations」三列，展开改为纯行点击（箭头指示），操作更简洁。

@@ -118,11 +118,21 @@ export async function removeGroupMembers(groupId, empIds) {
   return postJSON('/api/bs/hrm/group/deleteUserLink', { id: groupId, empIds });
 }
 
-// 外部联系人虚拟组织 ID（租户级，懒获取 + 缓存）
+// 外部联系人维度 ID（租户级，懒获取 + 缓存）
 let externalVirtualOrgId = null;
 
 /**
- * 获取「外部联系人」虚拟组织 ID（cmd=external 时 leftData 返回的 defaultVirtualOrg）
+ * 获取「外部联系人」维度 ID
+ *
+ * 官方「外部组织维护」页（externalOrgSetting）右上角快捷搜索调用
+ * /api/hrm/user/external/userExternalPage，其 virtualId / targetId 必须是
+ * 「外部联系人」维度 ID；缺失时平台返回 500「外部联系人维度 必填,不可以为空」。
+ *
+ * 维度 ID 来源：POST /api/hrm/common/browser/leftData/resource（cmd='external'）
+ *   data.data                        = 维度根节点数组，根节点 id 即维度 ID
+ *   data.data[0].children[].virtualId = 同一维度 ID（兜底）
+ * 实测（bpm 测试租户）：根节点 { id: '1082307393323122690', content: '外部联系人' }，
+ * 与官方「外部组织维护」页快捷搜索请求中的 virtualId 完全一致。
  */
 export async function ensureExternalVirtualOrgId() {
   if (externalVirtualOrgId) return externalVirtualOrgId;
@@ -138,11 +148,17 @@ export async function ensureExternalVirtualOrgId() {
     pageSize: 30,
     current: 1
   });
+  const roots = (data && Array.isArray(data.data) && data.data) || [];
+  const dimension = roots[0] || null;
+  const firstChild =
+    dimension && Array.isArray(dimension.children) ? dimension.children[0] : null;
   const id =
-    (data &&
-      (data.defaultVirtualOrg ||
-        (data.leftVirtualOrg && data.leftVirtualOrg[0] && data.leftVirtualOrg[0].id))) ||
-    null;
+    (dimension && dimension.id != null && String(dimension.id)) ||
+    (firstChild && firstChild.virtualId != null && String(firstChild.virtualId)) ||
+    '';
+  if (!id) {
+    throw new Error('External Contacts dimension not found (cannot resolve virtualId)');
+  }
   externalVirtualOrgId = id;
   return id;
 }
@@ -197,9 +213,15 @@ export async function searchPersons(keyword, opts = {}) {
 }
 
 /**
- * 外部联系人关键字搜索（「外部组织维护」清单接口）
+ * 外部联系人关键字搜索（= 官方「外部组织维护」页右上角快捷搜索同接口）
+ *
+ * 请求体对齐官方页面实测抓包：
+ *   { menuCode:'externalOrgSetting', keyword, advCondition:{},
+ *     virtualId, targetId:virtualId, includeSub:true, containDisableDept:false }
+ * 其中 virtualId / targetId 缺一不可（缺失即 500「外部联系人维度 必填」）。
+ *
  * 返回项已归一化为：{ id, name, subcompany(企业), department(部门), position, contact_way, mobile, email, external }
- * 其中 id 与加群接口同源，可直接作为 empIds 使用。
+ * 其中 id 与群组成员 queryUser 返回的 employeeId 同一 ID 域，可直接作为 addUserLink 的 empIds。
  */
 export async function searchExternalPersons(keyword) {
   const virtualId = await ensureExternalVirtualOrgId();
@@ -208,8 +230,11 @@ export async function searchExternalPersons(keyword) {
     keyword: keyword || '',
     advCondition: {},
     virtualId,
+    targetId: virtualId,
     includeSub: true,
-    containDisableDept: false
+    containDisableDept: false,
+    current: 1,
+    pageSize: 100
   });
   const items = (data && data.data) || [];
   return items.map((it) => ({
